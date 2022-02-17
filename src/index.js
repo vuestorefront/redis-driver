@@ -1,11 +1,17 @@
 import Redis from 'redis-tag-cache';
+import crypto from 'crypto';
+
+const defaultVersion = crypto.randomBytes(15).toString('hex')
 
 export default function RedisCache (options) {
-  const client = new Redis(options);
-
+  const client = new Redis(options.redisConfig);
+  
   return {
-    async invoke({ route, render, getTags }) {
-      const key = `page:${ route }`;
+    async invoke({ route, context, render, getTags }) {
+      const version = options.version || defaultVersion
+      const hostname = context.req.hostname
+
+      const key = `${ version }:page:${ hostname }${ route }`;
       const cachedResponse = await client.get(key);
 
       if (cachedResponse) {
