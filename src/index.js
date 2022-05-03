@@ -1,11 +1,24 @@
 import Redis from 'redis-tag-cache';
+import crypto from 'crypto';
+import { Logger } from '@vue-storefront/core'
+
 
 export default function RedisCache (options) {
-  const client = new Redis(options);
-
+  const { version, ...redisConfig } = options;
+  
+  const client = new Redis(redisConfig);
+  const fallbackVersion = crypto.randomBytes(15).toString('hex')
+  
   return {
-    async invoke({ route, render, getTags }) {
-      const key = `page:${ route }`;
+    async invoke({ route, context, render, getTags }) {
+      const cacheVersion = version || fallbackVersion
+      const hostname = context.req.hostname
+
+      if (!version) {
+        Logger.warn('The `version` property is missing in the `@vue-storefront/redis-cache` package configuration. In a multi-instance setup, this will result in a separate cache for every instance. Please refer to Redis driver documentation for more details.');
+      }
+
+      const key = `${ cacheVersion }:page:${ hostname }${ route }`;
       const cachedResponse = await client.get(key);
 
       if (cachedResponse) {
