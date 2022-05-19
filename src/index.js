@@ -9,17 +9,17 @@ export default function RedisCache (options) {
       let shouldCache = true;
       
       if (
-        options.queryParamFilter?.blackList &&
-        options.queryParamFilter?.whiteList
+        options.queryParamFilter?.denyList &&
+        options.queryParamFilter?.allowList
       ) {
         /*
-        Whitelist and blacklist contain query params that could affect the content of the page.
-        Any other params that don't exist in black/whitelist can be stripped as they do not affect the content of the page (e.g. gclid).
+        allowList and denyList contain query params that could affect the content of the page.
+        Any other params that don't exist in deny/allowList can be stripped as they do not affect the content of the page (e.g. gclid).
 
         Examples:
-        sale/april-catalogue/up-to-50-off?sc_src=email_3757321&sc_lid=272735070&sc_uid=zNKj3A7HFD - Cache but strip all except whitelist
-        term=white+shirt&sort=price_ascending&page=2                                              - Only whitelisted params - cache and keep whitelist
-        search?term=dress&sort=price_ascending&page=1&itemsPerPage=100                            - Do not cache, blacklist item exists
+        sale/april-catalogue/up-to-50-off?sc_src=email_3757321&sc_lid=272735070&sc_uid=zNKj3A7HFD - Cache but strip all except allowList
+        term=white+shirt&sort=price_ascending&page=2                                              - Only allowListed params - cache and keep allowList
+        search?term=dress&sort=price_ascending&page=1&itemsPerPage=100                            - Do not cache, denyList item exists
         */
         const cleanParams = [];
         const urlParts = route.split("?");
@@ -29,20 +29,20 @@ export default function RedisCache (options) {
           for (const param of params) {
             const paramKey = param.split("=")[0];
             if (
-              // Do not cache: blacklisted param exists
-              options.queryParamFilter.blackList.includes(paramKey)
+              // Do not cache: denyListed param exists (stop processing further params)
+              options.queryParamFilter.denyList.includes(paramKey)
             ) {
               shouldCache = false;
               break;
             }
-            // add any whitelist params to cleanParams
-            if (options.queryParamFilter.whiteList.includes(paramKey)) {
+            // add any allowList params to cleanParams, ignore any other params
+            if (options.queryParamFilter.allowList.includes(paramKey)) {
               cleanParams.push(param);
             }
           }
         }
 
-        key = `${options.queryParamFilter.tagName || 'page'}:${urlParts[0]}${
+        key = `page:${urlParts[0]}${
           cleanParams.length ? "?" : ""
         }${cleanParams.join("&")}`;
 
